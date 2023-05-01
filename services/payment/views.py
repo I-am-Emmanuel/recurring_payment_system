@@ -27,7 +27,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from . models import PaymentModel
 from . serializer import InitializeTransactionSerializer, PaymentSystemSerializer
-from . user_permission import *
+# from . user_permission import *
 
 
 
