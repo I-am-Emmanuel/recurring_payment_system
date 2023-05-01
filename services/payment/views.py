@@ -7,10 +7,10 @@ from django.shortcuts import HttpResponse
 from background_task import background
 from background_task.models import Task
 from decimal import Decimal as dec
+from datetime import timedelta
 
 import time
 import datetime
-from datetime import timedelta
 import requests
 
 
@@ -22,39 +22,16 @@ from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 
 from . models import PaymentModel
-from . serializer import  VerifyMyAccountSerializer, InitializeTransactionSerializer, PaymentSystemSerializer, TaskSerializer
+from . serializer import InitializeTransactionSerializer, PaymentSystemSerializer
 from . user_permission import *
 
 
 
 
-class VerifyMyAccount(APIView):
-    serializer_class = VerifyMyAccountSerializer
-    
-    def post(self, request):
-        data = request.data # access the first element of the data list
-        account_number = data.get("account_number")
-        bank_code = data.get("bank_code")
-        
-        url = "https://api.paystack.co/bank/resolve"
-        headers = {
-        "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
-        "Content-Type": "application/json"
-        }
-        
-        try:
-            response = requests.get(url=url, headers=headers, params={"account_number": account_number, "bank_code": bank_code})
-            # print(response.content)
-            if response.status_code == 200:
-                account_name = response.json()["data"]["account_name"]
-                return Response({"account_name": account_name})
-            else:
-                return Response({"error": "Failed to verify account number"}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as error_message:
-            return Response({"error": str(error_message)}, status=status.HTTP_400_BAD_REQUEST)
 
             
 
@@ -92,18 +69,11 @@ class InitializeTransactionView(generics.GenericAPIView):
                 response_data = response.json()
                 
                 if not response.ok:
-                    return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
-                
-                access_code = response_data['data']['access_code']
-                reference = response_data['data']['reference']
-                # print(reference)
-
-                
-                # creating an object in the database
-                customer = PaymentModel.objects.create(
+                    access_code = response_data['data']['access_code']
+                    reference = response_data['data']['reference']
+                    customer = PaymentModel.objects.create(
                     email=email,
                     amount= amount,
-                    authorization_code='',
                     subscription_plan=data['subscription_plan'],
                     payment_interval= data['payment_interval'],
                     card_type=data['card_type'],
@@ -111,47 +81,51 @@ class InitializeTransactionView(generics.GenericAPIView):
                     card_last_four_digit=data['card_last_four_digit'],
                     ccv=data['ccv'],
                     expiry_month=data['expiry_month'],
-                    expiry_year=data['expiry_year']
+                    expiry_year=data['expiry_year'],
+                    authorization_code = reference,
+                    status= PaymentModel.PAYMENT_STATUS_FAILED
+                    )
 
-                )
+                    customer.save()
+                    return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                    
+   
+                access_code = response_data['data']['access_code']
+                reference = response_data['data']['reference']
                 
-                customer.authorization_code = reference
+                # creating an object in the database
+                customer = PaymentModel.objects.create(
+                    email=email,
+                    amount= amount,
+                    subscription_plan=data['subscription_plan'],
+                    payment_interval= data['payment_interval'],
+                    card_type=data['card_type'],
+                    card_first_six_digit= data['card_first_six_digit'],
+                    card_last_four_digit=data['card_last_four_digit'],
+                    ccv=data['ccv'],
+                    expiry_month=data['expiry_month'],
+                    expiry_year=data['expiry_year'],
+                    authorization_code = reference
+
+                ) 
+                customer.status = PaymentModel.PAYMENT_STATUS_COMPLETE
                 customer.save()# all data collected at the point of payment been saved
-                # from datetime import datetime, timedelta
-
-# ...
-
-
-# ...
-
+                
+                # check for reccuring payment
                 if customer.subscription_plan:
                     interval = data['payment_interval'].lower()
-                    # interval = data['payment_interval']
-                    if interval == 'weekly'.casefold():
-                        next_payment = timedelta(days=7).total_seconds()
-                        # datetime.datetime.now()
-                        # new_payment = current_time + datetime.timedelta(days=7)
-                        # seconds_to_next_payment = (new_payment - current_time).total_seconds()
-
-                    elif interval == 'monthly'.casefold():
-                        next_payment = timedelta(days=30).total_seconds()
-                        # datetime.datetime.now()
-                        # new_payment = current_time + datetime.timedelta(days=30)
-                        # seconds_to_next_payment = (new_payment - current_time).total_seconds()
-
-                    elif interval == 'yearly'.casefold():
-                        next_payment = timedelta(days=30).total_seconds()
-                        # datetime.datetime.now()
-                        # new_payment = current_time + datetime.timedelta(days=365)
-                        # seconds_to_next_payment = (new_payment - current_time).total_seconds()
-
-                    reccured_payment(customer.pk, repeat=current_time)
-
- # calling for recurring payment if condition is met
-
-
                     
-                
+                    if interval == 'weekly':
+                        next_payment = timedelta(days=7).total_seconds()
+
+                    elif interval == 'monthly':
+                        next_payment = timedelta(days=30).total_seconds()
+                      
+                    elif interval == 'yearly':
+                        next_payment = timedelta(days=30).total_seconds()
+
+                    # calling for recurring payment if condition is met
+                    reccured_payment(customer.pk, repeat=current_time)
                 return Response({'access_code': access_code}, status=status.HTTP_201_CREATED)
         except Exception as error_message:
             return Response({'error': str(error_message)}, status=status.HTTP_400_BAD_REQUEST)
@@ -188,39 +162,26 @@ def reccured_payment(pk=None):
 
     if response.ok:
         # Save successful payment and create scheduled payment if applicable
-        payment.status = Payment.SUCCESS
+        payment.status = PaymentModel.PAYMENT_STATUS_COMPLETE
         payment.save()
 
     else:
         # Save failed payment
-        payment.status = Payment.FAILED
+        payment.status = Payment.PAYMENT_STATUS_FAILED
         payment.save()
 
 
-# @api_view()
+
 # this function terminate a running background payment by the customer
 
-# @action(detail=True, permission_classes=[IsAuthenticated])
-# def stop_recurring_payment(self, request, pk=None):
+@action(detail=True, permission_classes=[IsAuthenticated])
+def stop_recurring_payment(request, pk=None):
     
-#     tasks = Task.objects.filter(task_params__contains=pk)
-#     for task in tasks:
-#         task.delete()
-
-#     return HtppResponse(f"Stopped automatic payment for user with id {pk}")
-
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def stop_recurring_payment(request, pk):
     tasks = Task.objects.filter(task_params__contains=pk)
     for task in tasks:
         task.delete()
-    return HttpResponse({f"Stopped automatic payment for user with id {pk}"})
+
+    return HttpResponse(f"Stopped automatic payment for user with id {pk}")
 
 
 
@@ -238,89 +199,4 @@ class CustomerPaymentHistory(ModelViewSet):
         # Serialize the payments
         serializer = self.serializer_class(payments, many=True)
         return Response(serializer.data)
-
-
-# class StopPayment(viewsets.ModelViewSet):
-#     queryset = Task.objects.all()
-#     serializer_class = TaskSerializer
-
-#     # @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
-#     def stop_recurring_payment(self, request, pk=None):
-#         if request.method == 'GET':
-#             tasks = Task.objects.filter(task_params__contains=pk)
-#             tasks.delete()
-#             return Response({f"Stopped automatic payment for user with ID {pk}"}, status=status.HTTP_201_CREATED)
-
-    # def get_serializer_class(self):
-    #     if self.action == 'stop_recurring_payment':
-    #         return serializers.Serializer
-    #     return TaskSerializer
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# class CardValidation(generics.GenericAPIView):
-#     serializer_class = CardDetailsSerializers
-#     def post(self, request):
-        
-#         data = request.data
-#         data.get('card_first_six_digit')
-        
-#         url = 'https://api.paystack.co/decision/bin/539983'
-#         header = {
-#         "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
-#         "Content-Type": "application/json"
-#         }
-
-#         payload={ 'data': {
-#             'bin': data['card_first_six_digit']   
-#         }
-#         }
-
-#         try:
-#             response = requests.get(url=url, headers=header, json=payload)
-#             print(response.content)
-#             brand = response.json()['data']['brand']
-#             # print(response_data)
-#             # response_data['data']['authorization']
-
-#             if response.ok:
-#                 return Response({'brand': brand}, status=status.HTTP_200_OK)
-#             else:
-#                 return Response({response_data}, status=status.HTTP_400_BAD_REQUEST)
-
-#         except Exception as error_message:
-#             return Response({'message': str(error_message)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
-
-
-
-
-
 

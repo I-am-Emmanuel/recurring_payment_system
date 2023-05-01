@@ -14,6 +14,3 @@ class ViewCustomerPaymentHistoryPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.has_perm('customer.view_history')
 
-# class ViewCustomerPaymentHistoryPermission(permissions.BasePermission):
-#     def has_permission(self, request, view):
-#         return request.user.has_perm('customer.view_history')
