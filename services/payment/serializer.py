@@ -1,7 +1,9 @@
 from rest_framework import serializers
-from . models import InitiatePaymentSystem
+from . models import PaymentModel
 
 from django.core.validators import MaxLengthValidator, MinLengthValidator
+from django.contrib.auth import get_user_model
+from background_task.models import Task
 
 import secrets
 
@@ -10,33 +12,36 @@ class VerifyMyAccountSerializer(serializers.Serializer):
     account_number = serializers.CharField(max_length=10, validators = [MinLengthValidator(10, message='Your account should be 10 digit numbers'), MaxLengthValidator(10)], required=True )
     bank_code = serializers.CharField(required=True)
 
-class InitiatePaymentSerializer(serializers.ModelSerializer):
-    
-    
-    class Meta:  
-        model = InitiatePaymentSystem
-        fields = ['id','email','amount', 'card_number', 'cvv', 'expiry_month', 'expiry_year', 'subscription_plan']
-        read_only_fields = ('id', 'created_at', 'user')
+class CardDetailsSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentModel
+        fields = ['card_first_six_digit']
+        read_only_fields = ['country_code', 'card_type', 'bank_name', 'card_last_four_digit', 'ccv', 'expiry_month', 'expiry_year',]
 
 
-    def create(self, validated_data):
-        transaction_reference = validated_data.pop('transaction_reference', None)
-        details = self.Meta.model(**validated_data)
-        while not transaction_reference:
-            details.transaction_reference = secrets.token_urlsafe(50)
-            similar_transaction = InitiatePaymentSystem.objects.filter(transaction_reference=details.transaction_reference)
-        if not similar_transaction:
-            details.transaction_reference = details.transaction_reference
-        details.save()
-        return details
+
+class InitializeTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentModel
+        fields = ['id', 'amount','email', 'authorization_code', 'subscription_plan', 'payment_interval', 'card_type', 'card_first_six_digit', 'card_last_four_digit',\
+                 'ccv', 'expiry_month', 'expiry_year']
+        read_only_fields=['authorization_code', 'customer']
+
+class PaymentSystemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentModel
+        fields =['created_time', 'authorization_code', 'amount', 'email']
 
 
-        # def create(self, validated_data):
-        # password = validated_data.pop('password', None)
-        # details = self.Meta.model(**validated_data)
-        # details.email = details.email
-        # # details.otp = details.otp(sendOtp(email=details.email))
-        # if password is not None:
-        #     details.set_password(password)
-        # details.save()
-        # return details
+class TaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = '__all__'
+        
+
+
+
+
+
+
+
