@@ -1,4 +1,4 @@
-# dukka_physical_test
+# reccuring_payment_system
 This project is a payment API built with Django Rest Framework for accepting one-time and recurring payments using Paystack payment gateway.
 
 Prerequisites
