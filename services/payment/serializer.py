@@ -22,7 +22,7 @@ class InitializeTransactionSerializer(serializers.ModelSerializer):
 class PaymentSystemSerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentModel
-        fields =['status', 'created_time', 'authorization_code', 'amount', 'email']
+        fields =['created_time', 'authorization_code', 'amount', 'email']
 
 
 

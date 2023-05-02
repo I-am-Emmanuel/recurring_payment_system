@@ -13,7 +13,8 @@ import time
 import datetime
 import requests
 
-
+from rest_framework.generics import ListAPIView
+from rest_framework.mixins import ListModelMixin
 from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
@@ -51,6 +52,18 @@ class InitializeTransactionView(generics.GenericAPIView):
         data = serializer.validated_data
         email = data['email']
         amount = data['amount']
+
+        # ensuring customer who want interval payment subscribe for it
+        if data['subscription_plan'] is False and data['payment_interval'] is not None:
+            return Response({'message': "If you unchecked your subscription plan,\
+                            to can't set a payment interval"}, status=status.HTTP_205_RESET_CONTENT)
+
+        #  ensuring customer who dont want subsription plan end up opt in for it                 
+        elif data['subscription_plan'] is True and data['payment_interval'] is None:
+            return Response({'message': "You can't select a subscription plan and won't pick a payment plan"}, status=status.HTTP_205_RESET_CONTENT)
+            # except Exception as error_message:
+            #             return Response({'error_message': str(error_message)})
+                
     
         try:
             if get_user_model().objects.get(email=data['email']):
@@ -67,6 +80,7 @@ class InitializeTransactionView(generics.GenericAPIView):
                 
                 response = requests.post(url=url, headers=headers, json=payload)
                 response_data = response.json()
+                
                 
                 if not response.ok:
                     access_code = response_data['data']['access_code']
@@ -125,7 +139,7 @@ class InitializeTransactionView(generics.GenericAPIView):
                         next_payment = timedelta(days=30).total_seconds()
 
                     # calling for recurring payment if condition is met
-                    reccured_payment(customer.pk, repeat=current_time)
+                    reccured_payment(customer.pk, repeat=next_payment)
                 return Response({'access_code': access_code}, status=status.HTTP_201_CREATED)
         except Exception as error_message:
             return Response({'error': str(error_message)}, status=status.HTTP_400_BAD_REQUEST)
@@ -184,8 +198,7 @@ def stop_recurring_payment(request, pk=None):
     return HttpResponse(f"Stopped automatic payment for user with id {pk}")
 
 
-
-class CustomerPaymentHistory(ModelViewSet):
+class CustomerPaymentHistory(ListAPIView):
 
     queryset = PaymentModel.objects.all()
     serializer_class = PaymentSystemSerializer
