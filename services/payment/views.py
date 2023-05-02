@@ -56,7 +56,7 @@ class InitializeTransactionView(generics.GenericAPIView):
         # ensuring customer who want interval payment subscribe for it
         if data['subscription_plan'] is False and data['payment_interval'] is not None:
             return Response({'message': "If you unchecked your subscription plan,\
-                            to can't set a payment interval"}, status=status.HTTP_205_RESET_CONTENT)
+                            to can't set a payment interval"}, status=status.HTTP_400_BAD_REQUEST)
 
         #  ensuring customer who dont want subsription plan end up opt in for it                 
         elif data['subscription_plan'] is True and data['payment_interval'] is None:
@@ -126,7 +126,7 @@ class InitializeTransactionView(generics.GenericAPIView):
                 customer.save()# all data collected at the point of payment been saved
                 
                 # check for reccuring payment
-                if customer.subscription_plan:
+                if customer.subscription_plan is True:
                     interval = data['payment_interval'].lower()
                     
                     if interval == 'weekly':
