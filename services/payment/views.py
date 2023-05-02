@@ -199,7 +199,7 @@ def stop_recurring_payment(request, pk=None):
 
 
 class CustomerPaymentHistory(ListAPIView):
-    permission_classes = [IsAdminUser]
+    # permission_classes = [IsAdminUser]
     queryset = PaymentModel.objects.all()
     serializer_class = PaymentSystemSerializer
     
