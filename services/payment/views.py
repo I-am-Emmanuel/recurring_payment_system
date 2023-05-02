@@ -199,16 +199,17 @@ def stop_recurring_payment(request, pk=None):
 
 
 class CustomerPaymentHistory(ListAPIView):
-
+    permission_classes = [IsAdminUser]
     queryset = PaymentModel.objects.all()
     serializer_class = PaymentSystemSerializer
+    
     
     @action(detail=True, permission_classes=[ViewCustomerPaymentHistoryPermission])
     def history(self, request, pk):
         # Get the customer
-        customer = Customer.objects.get(pk=pk)
+        customer = PaymentModel.objects.get(pk=pk)
         # Filter the payments by the customer
-        payments = PaymentModel.objects.filter(customer=customer)
+        payments = PaymentModel.objects.filter(customer=customer.id)
         # Serialize the payments
         serializer = self.serializer_class(payments, many=True)
         return Response(serializer.data)
