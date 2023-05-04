@@ -8,6 +8,7 @@ from background_task import background
 from background_task.models import Task
 from decimal import Decimal as dec
 from datetime import timedelta
+from drf_yasg.utils import swagger_auto_schema
 
 import time
 import datetime
