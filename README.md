@@ -30,9 +30,11 @@ Run the Django app
 
 NAVIGATING THROUGH THE PROJECT
 Here are the iist of endpoints of the project;
+http://127.0.0.1:8000/  This is the endpoint that will load all the endpoints I have in this project.
 
-http://127.0.0.1:8000/auth/users/  This endpoint takes user to the signup page
-http://127.0.0.1:8000/auth/jwt/create/ This endpoint create a login parrameter for users. A jwt will be returned together with its refresh token. Grab the token and set at your browser request hearder. Using your browser mod header to set will be advisable. Set the headers: Authorization, Bearer to (JWT <token>) with no parenthesis when creating urs. This is only needed for testing.
+This can be access withough setting up swagger in your project.
+http://127.0.0.1:8000/registration/users/  This endpoint takes user to the signup page
+http://127.0.0.1:8000/login/jwt/create/ This endpoint create a login parrameter for users. A jwt will be returned together with its refresh token. Grab the token and set at your browser request hearder. Using your browser mod header to set will be advisable. Set the headers: Authorization, Bearer to (JWT <token>) with no parenthesis when creating urs. This is only needed for testing.
 http://127.0.0.1:8000/dukka/api/initialize-payment/ This will take user to the payment endpint.
 http://127.0.0.1:8000/dukka/api/payments-history/  This endpoint querry all payment made by a user
 http://127.0.0.1:8000/dukka/api/stop-payment/   This endpoint authorized a customer to stop a reccuring paymnt. Integer will be use to locate a particular payment history through the url in this case.  
