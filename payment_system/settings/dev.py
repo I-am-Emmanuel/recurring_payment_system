@@ -18,6 +18,8 @@ DATABASES = {
 }
 
 SECRET_KEY = env('SECRET_KEY')
+
+# this call the paystack secret key I already set in my .env file
 PAYSTACK_SECRET_KEY = env('PAYSTACK_SECRET_KEY')
 
 

@@ -71,8 +71,7 @@ THIRD_PARTY_APPS = [
     'djoser',
     # 'corsheaders',
     'rest_framework_simplejwt',
-    'paystackapi',
-    'pycash',
+    # 'paystackapi',
     'background_task',
     'drf_yasg',
     

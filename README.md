@@ -39,3 +39,5 @@ http://127.0.0.1:8000/dukka/api/initialize-payment/ This will take user to the p
 http://127.0.0.1:8000/dukka/api/payments-history/  This endpoint querry all payment made by a user
 http://127.0.0.1:8000/dukka/api/stop-payment/   This endpoint authorized a customer to stop a reccuring paymnt. Integer will be use to locate a particular payment history through the url in this case.  
   
+
+
